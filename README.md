@@ -188,21 +188,47 @@ tap.
 
 Profiles are not invented by Guardium — they map 1:1 onto **groups in the
 Technitium [Advanced Blocking](https://github.com/TechnitiumSoftware/DnsServer/blob/master/Apps/AdvancedBlockingApp/README.md) app**.
-On first boot, Guardium seeds these six groups (only if they don't already
-exist — your existing groups are never overwritten):
+On every dashboard start, Guardium re-asserts these seven managed groups
+in Technitium, populated with the blocklist URLs and domain lists from
+`server/profiles.py`:
 
-| Profile | Behaviour |
-|---|---|
-| `unrestricted` | No blocking. |
-| `default` | Default ad/tracker blocklist (StevenBlack hosts). |
-| `kids` | Default + adult / social / gambling / proxy categories. |
-| `no-streaming` | Default + Netflix / YouTube / Disney+ / Twitch / Prime / etc. |
-| `no-gaming` | Default + Steam / Epic / Xbox Live / PSN / Roblox / etc. |
-| `internet-off` | Blocks `.*` via regex — total kill switch for the device. |
+| Profile | Block list URLs | Explicit domain blocks |
+|---|---|---|
+| `unrestricted` | — | — |
+| `default` | StevenBlack `hosts` (ads + trackers) | DoH bootstrap domains |
+| `kids` | StevenBlack + porn-only + social-only + gambling-only + fakenews-only | DoH bootstrap + 12 YouTube domains |
+| `no-youtube` | StevenBlack | DoH bootstrap + 12 YouTube domains |
+| `no-streaming` | StevenBlack | DoH bootstrap + YouTube + 22 streaming domains (Netflix, Disney+, Hulu, Twitch, Spotify, TikTok, Stan, Binge, Kayo, 9now, 10play, 7plus, iview, SBS) |
+| `no-gaming` | StevenBlack | DoH bootstrap + 30 gaming domains (Steam, Epic, Fortnite, Xbox Live, PSN, Nintendo, Roblox, Minecraft, EA, Battle.net, Riot, Ubisoft, Discord) |
+| `internet-off` | — | DoH bootstrap + a `.*` regex (matches every query) |
 
-There is a catch-all group `default` mapped to `0.0.0.0/0`, so anything you
-haven't explicitly assigned a profile gets sane ad/tracker blocking out of
-the box.
+The **"DoH bootstrap"** set is the 25 hostnames clients use to *discover*
+encrypted-DNS providers (`dns.google`, `cloudflare-dns.com`,
+`mask.icloud.com`, `dns.nextdns.io`, `dns.quad9.net`, `doh.opendns.com`,
+`dns.adguard.com`, `doh.mullvad.net`, etc.). Blocking them at the DNS
+layer prevents iOS Private Relay, Chrome's secure DNS, Firefox's DoH,
+Android Private DNS, and Microsoft's Office private resolver from
+*activating* — which forces those clients to fall back to Technitium,
+where the rest of the profile takes effect.
+
+Blocks are answered with **`0.0.0.0` / `::`** (a sinkhole) rather than
+NXDOMAIN. NXDOMAIN lets DoH clients silently retry a secondary resolver
+and lets some smart-TV/IoT devices fall back to hardcoded public DNS;
+returning a non-routable IP looks like a successful resolution and keeps
+the client stuck on you.
+
+A catch-all `0.0.0.0/0` (and `[::]/0`) is mapped to the `default` group,
+so any device you haven't explicitly assigned a profile to still gets
+sane ad/tracker blocking out of the box.
+
+> [!IMPORTANT]
+> Guardium owns the seven managed group names. If you edit one of these
+> groups inside Technitium's UI (add a domain to `kids`, change the
+> blocklist URLs on `default`, etc.), your edit **will be overwritten**
+> the next time the dashboard restarts. Groups you create in Technitium
+> with **any other name** are left completely alone. If you want a
+> personalised variant of a managed profile, copy it under a new name in
+> Technitium and it will survive every reconcile.
 
 ### MAC-anchored device tracking
 
@@ -474,6 +500,41 @@ When it finishes you'll see:
 
 Open that URL, sign in with the same admin user you created in Technitium,
 and you're in.
+
+#### What the install does to Technitium
+
+The first time the dashboard starts with a valid service token, it
+**writes a complete Advanced Blocking app config to Technitium** —
+nothing in the Technitium UI needs to be touched by hand. Specifically:
+
+- Creates (or overwrites) the seven managed groups: `unrestricted`,
+  `default`, `kids`, `no-youtube`, `no-streaming`, `no-gaming`,
+  `internet-off`. Each group is populated with the appropriate
+  StevenBlack blocklist URLs and the curated domain lists from
+  `server/profiles.py`.
+- Maps `0.0.0.0/0` and `[::]/0` to the `default` group so every device
+  on your LAN gets ad/tracker blocking by default, even before you've
+  assigned anything explicitly.
+- Sets `enableBlocking=true`, `blockingAnswerTtl=30s`, and
+  `blockListUrlUpdateIntervalHours=24` (Technitium re-downloads the
+  StevenBlack feeds on its own daily schedule).
+- Sets the sinkhole address to `0.0.0.0`/`::` rather than NXDOMAIN, to
+  defeat DoH-fallback and IoT NXDOMAIN-fallback bypass tricks.
+- Auto-installs the **Query Logs (Sqlite)** Technitium app if it isn't
+  already present, so the dashboard's per-device query history works
+  out of the box.
+
+This same routine re-runs on every dashboard restart, which is what
+keeps managed groups consistent (and what makes manual UI edits to those
+seven groups not stick — see the warning in *Profiles → Technitium
+Advanced Blocking groups* above).
+
+Block-list URLs are *registered* by Guardium; the actual hosts files are
+fetched by Technitium itself on its 24-hour schedule. Right after the
+install the URLs are wired up but the file contents may not be cached
+yet. If you want the lists active immediately, open the Advanced
+Blocking app in Technitium and click **Update Now**, or wait up to a
+day.
 
 #### Manual install (no rsync)
 
